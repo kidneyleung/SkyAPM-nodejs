@@ -69,6 +69,14 @@ module.exports = function(httpModule, instrumentation, contextManager) {
                 let span = contextManager.createEntrySpan(filterParams(req.url), contextCarrier);
                 span.component(componentDefine.Components.HTTP);
                 span.spanLayer(layerDefine.Layers.HTTP);
+
+                const protocol = req.connection.encrypted ? "https" : "http";
+                const fullUrl = `${protocol}://${req.headers.host}${req.url}`;
+                const urlInfo = new URL(fullUrl);
+                span.tag("request.url", fullUrl);
+                span.tag("request.method", req.method);
+                span.tag("request.port", String(urlInfo.port));
+
                 onFinished(res, function(err) {
                     if (err) {
                         span.errorOccurred();
@@ -93,8 +101,10 @@ module.exports = function(httpModule, instrumentation, contextManager) {
      */
     function wrapRequest(original) {
         return function(options, callback) {
+            const hostname = options.hostname || options.host;
+
             let contextCarrier = new ContextCarrier();
-            let span = contextManager.createExitSpan(options.path, (options.hostname || options.host) + ":" + options.port, contextCarrier);
+            let span = contextManager.createExitSpan(filterParams(options.path), hostname + ":" + options.port, contextCarrier);
             contextCarrier.pushBy(function(key, value) {
                 if (!options.hasOwnProperty("headers") || !options.headers) {
                     options.headers = {};
@@ -103,6 +113,17 @@ module.exports = function(httpModule, instrumentation, contextManager) {
             });
             span.component(componentDefine.Components.HTTP);
             span.spanLayer(layerDefine.Layers.HTTP);
+
+            let fullUrl = `${options.agent.protocol}//${hostname}`;
+            const port = parseInt(options.port, 10) || 0;
+            if (port !== 80 && port !== 443) {
+                fullUrl += `:${options.port}`;
+            }
+            fullUrl += options.path;
+            span.tag("request.url", fullUrl);
+            span.tag("request.method", options.method);
+            span.tag("request.port", String(port));
+
             let result = original.apply(this, arguments);
             contextManager.finishSpan(span);
             return result;
