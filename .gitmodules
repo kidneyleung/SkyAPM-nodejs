@@ -1,3 +1,3 @@
 [submodule "modules/nodejs-agent/proto"]
 	path = modules/nodejs-agent/proto
-url=https://github.com/apache/skywalking-data-collect-protocol/tree/b66fa070fd647662f06497e4ed3657eb258cb6e9
+url=https://github.com/apache/skywalking-data-collect-protocol/tree/7b244ff7ec350910295eee85633e02d92a6f6b1c
